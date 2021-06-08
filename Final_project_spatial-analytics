@@ -1,0 +1,375 @@
+
+# Loading some packages
+library(sf)
+library(tidyverse)
+library(tmap)  
+library(dplyr)
+library(leaflet)
+
+
+##### Loading data #####
+
+# Loading the data and assign them as Crime_data and Washington_boundaries
+Washington_boundaries <- st_read("us-state-boundaries.shp")
+Washington_boundary <- Washington_boundaries[5]
+Crime_data <- st_read("Crime_Incidents_in_2021.shp") # data from: https://hub.arcgis.com/datasets/DCGIS::crime-incidents-in-2021?geometry=-77.492%2C38.789%2C-76.564%2C38.976
+
+# Take a quick look at the dataset
+head(Crime_data) # We can see that this dataset consist of the geometry type points, which is a type of vectordata. 
+# The geograpchic crs in this data is WGS 84
+
+
+# The Crime-dataset consists of 24 columns with a total of 5904 incidents
+ncol(Crime_data) 
+nrow(Crime_data)
+
+#Plot the crime incidents on a map
+Crime_Offenses <- Crime_data[24] # Making sure "Crime_offenses" consist of the geometry
+plot(Washington_boundary$geometry,
+     main = "Crime offenses in DC")
+plot(Crime_Offenses,
+     add = TRUE) # All of the crimes
+
+#Plotting a histogram of how often different offenses occur.
+counted_crimes <- count(Crime_data, OFFENSE)
+
+ggplot(counted_crimes, aes(x = OFFENSE, y = n)) +
+  geom_col() # Here we can see that theft are the crimes that occur most often.
+
+# Adding a column which identifies if the crime can be assessed as a type 1, type 2 or a type 3 crime 
+# based on how serious the crime is
+Crime_data1 <- data.frame(
+  OFFENSE = c(Crime_data$OFFENSE),
+  Geometry = c(Crime_data$geometry),
+  Longitude = c(Crime_data$LONGITUDE),
+  Latitude = c(Crime_data$LATITUDE),
+  SHIFT = c(Crime_data$SHIFT)
+) %>% 
+  mutate(
+    OFFENSE=ifelse(
+      OFFENSE %in% c("THEFT/OTHER", "THEFT F/AUTO", "MOTOR VEHICLE THEFT"), 
+      "Type 1 crime",
+      ifelse( 
+        OFFENSE %in% c("ARSON", "BURGLARY", "ROBBERY"), 
+        "Type 2 crime",
+        "Type 3 crime"
+      )
+    )
+  )
+
+# Making datasets of each of the three types of crimes
+Crime1=Crime_data1 %>% 
+  subset(OFFENSE=="Type 1 crime")
+Crime2=Crime_data1 %>% 
+  subset(OFFENSE=="Type 2 crime")
+Crime3=Crime_data1 %>% 
+  subset(OFFENSE=="Type 3 crime")
+
+# Plotting a histogram of how often crimetypes occur
+counted_crimetypes <- count(Crime_data1, OFFENSE) 
+
+ggplot(counted_crimetypes, aes(x = OFFENSE, y = n)) +
+  geom_col() # As we can see, type 1 crimes are highly overrepresented.
+
+#Making datasets of the time each crime occur(Day, evening or midnight shift)
+Crime_by_day=Crime_data1 %>% 
+  subset(SHIFT== "DAY") # There is 2236 incidents that have happened at day
+Crime_by_evening=Crime_data1 %>% 
+  subset(SHIFT=="EVENING") # There is 2746 incidents that have happened in the evening
+Crime_by_midnight=Crime_data1 %>% 
+  subset(SHIFT=="MIDNIGHT") # There is 922 incidents that have happened past midnight
+
+# Plotting a histogram of often often crimes occur at differnt times
+counted_crimes_by_time <- count(Crime_data, SHIFT)
+ggplot(counted_crimes_by_time, aes(x = SHIFT, y = n)) +
+  geom_col() # As we can see, both the day and evening shift have high crimerates. The midningh shift is a bit lower.
+
+
+# Plotting the different offenses within the washington boundary polygon. From here we can see
+# that type1 crimes is highly overrepressented.
+
+plot(Washington_boundary$geometry,
+     main = "Crime offenses in DC")
+plot(Crime1$geometry,
+     add =TRUE) # Only type one crimes
+
+plot(Washington_boundary$geometry,
+     main = "Crime offenses in DC")
+plot(Crime2$geometry,
+     add =TRUE) # Only type two crimes
+
+plot(Washington_boundary$geometry,
+     main = "Crime offenses in DC")
+plot(Crime3$geometry,
+     add =TRUE) # Only type three crimes
+
+
+# To get an overview of the data, an interactive map is created in leaflet.
+
+Crime_data %>%
+  leaflet() %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
+  
+  addLayersControl(baseGroups = c("Toner Lite", "World Imagery")) %>%
+  
+  addMarkers(lng = Crime_data$LONGITUDE,
+             lat = Crime_data$LATITUDE,
+             clusterOptions = markerClusterOptions(),
+             label = paste("DISTRICT:", Crime_data$DISTRICT, "|", 
+                           "Report date:", Crime_data$REPORT_DAT, "|", 
+                           "SHIFT:", Crime_data$SHIFT,"|",
+                           "OFFENSE:", Crime_data$OFFENSE)) %>%
+  
+  #Set a starting zoom, which is the coordinates of Washington DC
+  setView(lat = 	38.9362976841, lng = -77.0271973182, zoom = 12) %>%
+  
+  #Adding mini map  
+  addMiniMap(
+    toggleDisplay = TRUE,
+    tiles = providers$Stamen.TonerLite
+  ) %>%
+  
+  # Adding measures
+  addMeasure(
+    primaryLengthUnit = "kilometers",
+    secondaryLengthUnit = 'miles', 
+    primaryAreaUnit = "hectares",
+    secondaryAreaUnit="acres", 
+    position = 'topleft')
+
+# Interactive map which shows all type 1 crimes
+Crime1 %>%
+  leaflet() %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
+  
+  addLayersControl(baseGroups = c("Toner Lite", "World Imagery")) %>%
+  
+  addMarkers(lng = Crime1$Longitude,
+             lat = Crime1$Latitude,
+             clusterOptions = markerClusterOptions(),
+             label = paste("Type 1 crime")) %>%
+  
+  #Set a starting zoom
+  setView(lat = 	38.9362976841, lng = -77.0271973182, zoom = 12) %>%
+  
+  #Adding mini map  
+  addMiniMap(
+    toggleDisplay = TRUE,
+    tiles = providers$Stamen.TonerLite
+  ) %>%
+  
+  # Adding measures
+  addMeasure(
+    primaryLengthUnit = "kilometers",
+    secondaryLengthUnit = 'miles', 
+    primaryAreaUnit = "hectares",
+    secondaryAreaUnit="acres", 
+    position = 'topleft')
+
+# Interactive map which shows all type 2 crimes
+Crime2 %>%
+  leaflet() %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
+  
+  addLayersControl(baseGroups = c("Toner Lite", "World Imagery")) %>%
+  
+  addMarkers(lng = Crime2$Longitude,
+             lat = Crime2$Latitude,
+             clusterOptions = markerClusterOptions(),
+             label = paste("Type 1 crime")) %>%
+  
+  #Set a starting zoom
+  setView(lat = 	38.9362976841, lng = -77.0271973182, zoom = 12) %>%
+  
+  #Adding mini map  
+  addMiniMap(
+    toggleDisplay = TRUE,
+    tiles = providers$Stamen.TonerLite
+  ) 
+
+# Interactive map which shows all type 3 crimes
+Crime3 %>%
+  leaflet() %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
+  
+  addLayersControl(baseGroups = c("Toner Lite", "World Imagery")) %>%
+  
+  addMarkers(lng = Crime3$Longitude,
+             lat = Crime3$Latitude,
+             clusterOptions = markerClusterOptions(),
+             label = paste("Type 3 crime")) %>%
+  
+  #Set a starting zoom
+  setView(lat = 	38.9362976841, lng = -77.0271973182, zoom = 12) %>%
+  
+  #Adding mini map  
+  addMiniMap(
+    toggleDisplay = TRUE,
+    tiles = providers$Stamen.TonerLite
+  ) %>%
+  
+  # Adding measures
+  addMeasure(
+    primaryLengthUnit = "kilometers",
+    secondaryLengthUnit = 'miles', 
+    primaryAreaUnit = "hectares",
+    secondaryAreaUnit="acres", 
+    position = 'topleft')
+
+
+
+
+# Using tmap to create maps of crimes, within the washington boundary
+
+# First we can see that class of washington_boundary is sf. 
+# To use tmap, we have to change this to "spatial"
+class(Washington_boundary)
+Washington_boundary_sp <-  as(Washington_boundary, "Spatial") 
+class(Washington_boundary_sp)
+
+# In addition we need to convert the crime datsets from dataframes to sf-objects.
+# This is done with st_as_sf-function.
+
+# First we plot all type 1 crimes on a map
+Crime1.sp <- st_as_sf(Crime1)
+Crime1.sp %>% 
+  tm_shape()+tm_dots(col="OFFENSE", palette="chartreuse")+
+  tm_shape(Washington_boundary_sp)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Type 1 crimes in Washington DC",
+            bg.color = "white")
+# Then all type 2 crimes
+Crime2.sp <- st_as_sf(Crime2)
+Crime2.sp %>% 
+  tm_shape()+tm_dots(col="OFFENSE", palette="blue")+
+  tm_shape(Washington_boundary_sp)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Type 2 crimes in Washington DC",
+            bg.color = "white")
+
+# And finally all type 3 crimes
+Crime3.sp <- st_as_sf(Crime3)
+Crime3.sp %>% 
+  tm_shape()+tm_dots(col="OFFENSE", palette="red")+
+  tm_shape(Washington_boundary_sp)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Type 3 crimes in Washington DC",
+            bg.color = "white")
+
+# Then I plot all the three types together on a map. Type 1 crimes can be seen as green dots, 
+# type 2 as blue dots, and type 3 as red dots. 
+
+class(Crime_data1)
+Crime_data_sp <- st_as_sf(Crime_data1)
+Crime_data_sp %>% 
+  tm_shape()+ tm_dots(size=.09, col="OFFENSE", palette=c("Type 1 crime"= "chartreuse", "Type 2 crime"= "blue", "Type 3 crime" = "red"))+
+  tm_shape(Washington_boundary_sp)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Crime incidents in washington DC",
+            bg.color = "white")
+
+#  I will now look into how time affects crime incidents, by using the datsets which subsets crimes
+# into day-shift, evening-shift and midnight-shift
+
+ # Showing all crimes that occur in the day-shift
+class(Crime_by_day)
+Crime_by_day1 <- st_as_sf(Crime_by_day)
+Crime_by_day1 %>% 
+  tm_shape() + tm_dots(col = "OFFENSE", palette=c("Type 1 crime"= "chartreuse", "Type 2 crime"= "blue", "Type 3 crime"="red"))+
+  tm_shape(Washington_boundary)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Crime incidents by day",
+            bg.color = "white")
+
+class(Crime_by_evening)
+# Showing all crimes that occur in the evening-shift
+Crime_by_evening1 <- st_as_sf(Crime_by_evening)
+Crime_by_evening1 %>% 
+  tm_shape() + tm_dots(col = "OFFENSE", palette=c("Type 1 crime"= "chartreuse", "Type 2 crime"= "blue", "Type 3 crime"= "red"))+
+  tm_shape(Washington_boundary)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Crime incidents in the evening",
+            bg.color = "white")
+
+# Showing all crimes that occur in the midnight-shift
+class(Crime_by_midnight)
+Crime_by_midnight1 <- st_as_sf(Crime_by_midnight)
+Crime_by_midnight1 %>% 
+  tm_shape() + tm_dots(size=.3, col = "OFFENSE", palette=c("Type 1 crime"= "chartreuse", "Type 2 crime"= "blue", "Type 3 crime"= "red"))+
+  tm_shape(Washington_boundary)+
+  tm_borders()+
+  tm_credits("Aksel Roald")+
+  tm_layout(main.title = "Crime incidents past midnight",
+            bg.color = "white")
+
+# Showing histograms of which crimes that occur in the different shifts
+
+# Day-shift
+counted_crimes_by_day <- count(Crime_by_day1, OFFENSE)
+ggplot(counted_crimes_by_day, aes(x = OFFENSE, y = n)) +
+  geom_col()
+
+# Evening-shift
+counted_crimes_by_evening <- count(Crime_by_evening1, OFFENSE)
+ggplot(counted_crimes_by_evening, aes(x = OFFENSE, y = n)) +
+  geom_col()
+
+# Midnight-shift
+counted_crimes_by_midnight <- count(Crime_by_midnight1, OFFENSE)
+ggplot(counted_crimes_by_midnight, aes(x = OFFENSE, y = n)) +
+  geom_col()
+
+# Results: A clear trend in the the above histograms is that the severity of the crime increases
+# from the day-shift to the evening-shift, and increases even more to the midnight-shift.
+
+
+
+
+# Project from geographic to UTM
+Crime.utm <- st_transform(Crime_data, 2286) # Because the world is round and conceptually divided into zones, we have to get the data from 3D to 2D 2285 could also be used.
+# Create Spatial* object
+Crime.sp  <- as(Crime.utm, "Spatial")
+class(Crime.sp)
+
+# Create ppp object
+Crime.ppp <- as(Crime.sp, "ppp")
+plot(Crime.ppp) 
+
+  #Checking the class
+class(Crime.ppp)
+
+
+# By using the summary-function we get the basic properties of the datset. We can se that the 
+# average intensity is  0.000002093112 pr square unit
+summary(Crime.ppp)
+
+#Checking the density of the crime
+plot(density(Crime.ppp))
+
+plot(Washington_boundary$geometry,
+     main = "Crime offenses in DC")
+plot(Q,
+     add=TRUE)
+
+
+# Using quadratscount
+Q <- quadratcount(Crime.ppp, nx=4, ny=4)
+plot(Q)
+
+plot(Crime.ppp, pch=20, cols="grey70", main=NULL)  # Plot points
+plot(Q,
+     add=TRUE)  # Add quadrat grid
+
+
+
+
