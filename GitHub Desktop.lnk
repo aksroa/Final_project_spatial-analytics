@@ -4,18 +4,7 @@ library(sf)
 library(tidyverse)
 library(tmap)  
 library(dplyr)
-#library(spatstat)
-#library(maptools)
 library(leaflet)
-
-
-getwd()
-setwd("../Downloads/Crime_Incidents_in_2021")
-setwd("../us-state-boundaries")
-setwd("../Voting_Precinct_-_2019")
-setwd("../Police_Districts")
-setwd("..")
-setwd("Crime_Incidents_in_2021")
 
 
 ##### Loading data #####
@@ -358,7 +347,7 @@ class(Crime.sp)
 Crime.ppp <- as(Crime.sp, "ppp")
 plot(Crime.ppp) 
 
-#Checking the class
+  #Checking the class
 class(Crime.ppp)
 
 
@@ -388,7 +377,5 @@ plot(Q,
 
 #Tips:
 # https://mgimond.github.io/Spatial/point-pattern-analysis-in-r.html
-# https://gsp.humboldt.edu/olm/R/03_02_ClusterAnalysis.html
-# https://hughst.github.io/week-4/
-# http://ropatics.com/BI/BI_-_clustering-part1.html
+
 
