@@ -10,4 +10,4 @@ Software Framework
 
 The processes and tasks in this assignment have been conducted using Windows 10 65-bites operating system. All programming is done in R version 4.0.2 64-bits through the IDE RStudio version 1.1.463.  The following packages have been used: “sf”, “tidyverse”, “tmap”, "dplyr" and "leaflet".
 
-The data containing information about the crime incidents, originates from district of columbia metropolitan police department. The data contains a number of files (shp, qpj, cpg etc.), which can be found in the data-folder.
+The data containing information about the crime incidents, originates from district of columbia metropolitan police department. The data contains a number of files (shp, qpj, cpg etc.), which can be found in the data-folder or by the links in the paper. The data is free for everyone to use.
