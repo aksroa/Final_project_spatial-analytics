@@ -9,8 +9,6 @@ library(leaflet)
 
 ##### Loading data #####
 
-
-
 # Loading the data and assign them as Crime_data and Washington_boundaries
 Washington_boundaries <- st_read("us-state-boundaries.shp")
 Washington_boundary <- Washington_boundaries[5]
@@ -373,9 +371,5 @@ plot(Q,
      add=TRUE)  # Add quadrat grid
 
 
-
-
-#Tips:
-# https://mgimond.github.io/Spatial/point-pattern-analysis-in-r.html
 
 
